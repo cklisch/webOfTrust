@@ -1,0 +1,33 @@
+Functionality
+
+1. The user shall be able to either create a random "web of trust" with a number
+   of nodes and density of his own choice or load an existing "web of trust"
+   from a text file into the program.
+
+2. The user then shall be able to calculate the trust between two nodes by
+   stating how long the maximum path length shall be.
+
+3. The calculated trust shall be consistent and representative of real world 
+   dynamics.
+ 
+Design
+
+i.   The main function communicates with the user. One C file will be dealing
+     with web management and another with the get_trust function.
+
+ii.  1. get_web will put data from a .txt file into an array of nodes which make 
+        up the web of trust and returns the pointer to the first node.
+
+     2. mk_randweb will create a random web with x nodes and y average links
+        at each node. Each node may only link once to another.  
+
+     3. get_trust will calculate the trust from one node to another.
+
+iii. The main object is the web which has the number of nodes and the pointer
+     to the first node as attributes. The node itself is an object which
+     states the number of links it has to other nodes and then those links.
+     The get_trust function needs an accumilator for each node to store the
+     composition of trust to that specific node.
+ 
+iv.  Our common coding style shall closely adhere to the "linux kernel coding
+     style".   
