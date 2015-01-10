@@ -4,19 +4,18 @@
 
 int main(void){
 	char* testWeb;
-	struct Node* web;
-	int web_size, i = 0;
-	uint8_t x = 2, trust;
-
-	testWeb = "testWeb.txt";
-
-	web = getWeb (testWeb);
-
-	trust = newGetTrust (web, 4, 0 , 3);
+        printf("wtf");
+	struct Web web;
+	uint8_t trust;
+        printf("wtf");
+        testWeb = "testWeb.txt";
+	web = get_web(testWeb);	
+        printf("wtf");
+	trust = get_trust1 (web, 0, 1, 8);
 
 
 	printf("trust = %d\n", trust );
 
 
-	return 1;
+	return 0;
 }
