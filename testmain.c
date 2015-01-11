@@ -8,11 +8,15 @@ int main(void){
 	uint8_t trust;
     testWeb = "testWeb.txt";
     printf("%s\n", testWeb);
-	web = get_web(testWeb);	
+	web = mk_randweb (500, 50);
+	printf("1\n");
+	trust = get_trust2 (web, 0, 2, 8);
+
+
+	printf("__trust = %d\n", trust );
 	trust = get_trust1 (web, 0, 2, 8);
+	printf("__trust = %d\n", trust );
 
-
-	printf("trust = %d\n", trust );
 
 
 	return 0;
