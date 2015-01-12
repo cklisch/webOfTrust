@@ -59,81 +59,60 @@ struct Web get_web (char *web_name)
 
 
 
-uint8_t getTrustHelper (struct Node* node, int* path, int toNode, int max_pathlength)
+uint8_t getTrustHelper (struct Node *node, int from_node, int to_node, struct Path *path)
 {
-        if (path[path[0]] == toNode) return MAX_TRUST;
-        int pathlength = path[0];
-        printf("%d\n",pathlength );
-        struct Node* first_node = node;
-        if (pathlength == max_pathlength) {
-                goto no_path;
-        }
-        int fromNode = path[pathlength];
-        printf("%d\n",fromNode );
-        node += fromNode;
-        int nrOfLinks = node->links;
-        if (nrOfLinks == 0) {
-                goto no_path; 
-        }
-        uint8_t *trust = NULL ,trustnext_node_acc;
-        int i = 0, j, negTrust_acc = 1, initializtion = 0;
-
-        trust = (uint8_t*) malloc (nrOfLinks * sizeof (trust));
-        if (trust == NULL){
-                printf("getTrustHelper: error malloc trust\n");
-                exit(1);
-
-        }
         
-        for (i = 0; i < nrOfLinks; i++) {
-                path[0] = pathlength;
+        if (path->length == path->max) 
+            return 0;
+        int i;
+        for (i = 0; i < path->length; i++) 
+            if (path->pos[i] == from_node) 
+                return 0;
 
-                for (j=1; j<path[0]; j++){
-                        if (node->trusty[i] == path[j]){
-                                i++;
-                        }
+        if (to_node == from_node) 
+            return MAX_TRUST;
+
+        
+        path->pos[path->length] = from_node;
+        int pathlength = ++path->length;
+        uint8_t trust, distrust_acc = MAX_TRUST;      
+
+
+        for (i = 0; i < node[from_node].links; i++) {
+
+                trust = getTrustHelper (node, node[from_node].trusty[i], to_node, path);
+
+                path->length = pathlength;
+                
+                trust = ((node[from_node].trust[i] * trust) / MAX_TRUST) ; 
+                if ((distrust_acc * (MAX_TRUST - trust)) % MAX_TRUST > 0) {
+                    distrust_acc = (distrust_acc * (MAX_TRUST - trust)) / MAX_TRUST;
+                    distrust_acc++;
                 }
-                path[0]++;
+                else distrust_acc = (distrust_acc * (MAX_TRUST - trust)) / MAX_TRUST;
 
-                if (path[0] == max_pathlength) goto no_path;
-
-                path[path[0]] = node->trusty[i];
-
-                trustnext_node_acc = getTrustHelper (first_node, path, toNode, max_pathlength);
-
-                if (trustnext_node_acc != NO_PATH) {
-                        trust[i] = (node->trust[i] * trustnext_node_acc) / MAX_TRUST;
-                        if (initializtion == 0) {
-                                negTrust_acc = (MAX_TRUST - trust[i]);
-                                initializtion = 1;
-                        }
-                        else {
-                                negTrust_acc *= ((MAX_TRUST - trust[i]));
-                                negTrust_acc /= MAX_TRUST;
-                        }                               
-                }
+                                                                    
+                
                 
         }
-        free (trust);
-        if (initializtion == 0) {
-no_path:                
-                return NO_PATH;
-        }
-        else return (MAX_TRUST - negTrust_acc);
+                
+        return (MAX_TRUST - distrust_acc);
 }
 
-uint8_t get_trust1 (struct Web web, int fromNode, int toNode, int max_pathlength)
+uint8_t get_trust1 (struct Web web, int from_node, int to_node, int max_pathlength)
 {
         uint8_t trust;
-        int *path = (int*) malloc ((max_pathlength) * sizeof (*path));
-        if (path == NULL) {
+        int *pos = (int*) calloc (max_pathlength , sizeof (*pos));
+        if (pos == NULL) {
                 printf("getTrust: Error malloc\n");
                 return 0;
         }
-        path[0] = 1;
-        path[1] = fromNode;
-        trust = getTrustHelper (web.nodes, path, toNode, max_pathlength);
-
+        struct Path path;
+        path.pos = pos;
+        path.max = max_pathlength;
+        path.length = 0;
+        trust = getTrustHelper (web.nodes, from_node, to_node, &path);
+        free (pos);
         return trust;
 
 }
@@ -289,7 +268,7 @@ struct Web mk_randweb(int size, int density){
                                 }
                         }
                         node[i].trusty[j] = trusty;
-                        node[i].trust[j] = (rand() % 99) + 1;
+                        node[i].trust[j] = (rand() % MAX_TRUST) ;
                 }
         }
 

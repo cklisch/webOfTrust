@@ -8,16 +8,13 @@ int main(void){
 	uint8_t trust;
     testWeb = "testWeb.txt";
     printf("%s\n", testWeb);
-	web = mk_randweb (5000, 15);
+    web = get_web (testWeb);
+	web = mk_randweb (50, 10);
 	printf("1\n");
-	trust = get_trust1 (web, 0, 2, 5);
-	printf("__trust = %d\n", trust );
-	trust = get_trust1 (web, 0, 2, 6);
-	printf("__trust = %d\n", trust );
-	trust = get_trust1 (web, 0, 2, 7);
-	printf("__trust = %d\n", trust );
-
-
-
+	int i;
+	for (i = 1; i <= 20; i++){
+		trust = get_trust1 (web, 0, 3, i);
+		printf("pathlength %d trust = %d\n", i, trust );
+	}
 	return 0;
 }

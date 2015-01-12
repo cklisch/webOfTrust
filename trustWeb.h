@@ -6,6 +6,12 @@
 #define MAX_TRUST 100
 #define NO_PATH 0
 
+struct Path {
+    int length;
+    int max;
+    int *pos;
+};
+
 struct Web {
         int size;
         struct Node *nodes;
