@@ -63,11 +63,13 @@ uint8_t getTrustHelper (struct Node* node, int* path, int toNode, int max_pathle
 {
         if (path[path[0]] == toNode) return MAX_TRUST;
         int pathlength = path[0];
+        printf("%d\n",pathlength );
         struct Node* first_node = node;
         if (pathlength == max_pathlength) {
                 goto no_path;
         }
         int fromNode = path[pathlength];
+        printf("%d\n",fromNode );
         node += fromNode;
         int nrOfLinks = node->links;
         if (nrOfLinks == 0) {
@@ -137,16 +139,19 @@ uint8_t get_trust1 (struct Web web, int fromNode, int toNode, int max_pathlength
 }
 
 uint8_t newGetTrustHelper (struct TrustAcc* acc, uint8_t* actual_trust, int from_node, int to_node, int *path) 
-{         
+{       
+        printf("fromNode %d pathlength %d\n",from_node, path[0]); 
         if (from_node == to_node) return 100;
         if (actual_trust[from_node] != NO_PATH) return actual_trust[from_node];
-        path[path[0]++] = from_node;
         int pathlength = path[0], is_cyclic = 0, i;
+        path[path[0]++] = from_node;
+        
         uint8_t trust, neg_trust = MAX_TRUST;
         struct TrustAcc* cur_acc = (acc + from_node);
         while (cur_acc->nextAcc != NULL) {
                 for (i = 1; i < pathlength; i++){                        
                         if (path[i] == cur_acc->prevNode) {
+                                printf("is_cyclic %d\n", i );
                                 is_cyclic = 1;
                                 cur_acc = cur_acc->nextAcc;
                                 if (cur_acc->nextAcc == NULL) return 0;
@@ -206,16 +211,17 @@ uint8_t get_trust2 (struct Web web, int fromNode, int toNode, int max_pathlength
         
         while (1) {
                 current_node = web.nodes[path[pathlength]];
-                if (pathlength == max_pathlength || path[pathlength] == toNode) {
-
-                        current_node = web.nodes[path[--pathlength]];
-                }
                 while (link_cnt[path[pathlength]] >= current_node.links) {
                         if (pathlength == 0) {
                                 goto recursion;
                         }
                         current_node = web.nodes[path[--pathlength]];
                 }  
+                if (pathlength == max_pathlength || path[pathlength] == toNode) {
+
+                        current_node = web.nodes[path[--pathlength]];
+                }
+                
                 next_node = current_node.trusty[link_cnt[path[pathlength]]];
                 link_cnt[path[pathlength]]++;
                 next_node_acc = (acc + next_node);
@@ -238,6 +244,7 @@ uint8_t get_trust2 (struct Web web, int fromNode, int toNode, int max_pathlength
         }
 recursion:
         path[0] = 1;
+        printf("recursion\n");
         return newGetTrustHelper (acc, actualTrust, toNode, fromNode, path);
 }
 
@@ -264,27 +271,23 @@ void web2file (char* file_name, struct Web web)
 
 
 struct Web mk_randweb(int size, int density){
-        int i, j, k, links, trusty;
+        int i, j, k, links, trusty, seed = 1;
         struct Node *node = (struct Node*) malloc (size * sizeof (struct Node));
         for (i = 0; i < size; i++){
-                srand (time(NULL) * (i+1));
+                srand (time(NULL) * seed++);
                 links = (rand() % size) % density;
-                printf("links %d\n", links );
                 malloc_node (&node[i], links);
                 node[i].links = links;
-                printf("1\n");
-                for (j = 0; j<links; j++){
-
-                        printf("3\n");
-                        srand(time(NULL) * (j+1) * (i+1));
+                for (j = 0; j < links; j++){
+                        srand(time(NULL) + seed++);
                         trusty = rand() % size;              
                         for (k = 0; k < j; k++) {
                                 if (node[i].trusty[k] == trusty) {
+                                        srand(time(NULL) + (i+1) * seed++);
                                         k = 0;
                                         trusty = rand() % size;
                                 }
                         }
-                        printf("2\n");
                         node[i].trusty[j] = trusty;
                         node[i].trust[j] = (rand() % 99) + 1;
                 }

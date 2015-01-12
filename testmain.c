@@ -8,13 +8,13 @@ int main(void){
 	uint8_t trust;
     testWeb = "testWeb.txt";
     printf("%s\n", testWeb);
-	web = mk_randweb (500, 50);
+	web = mk_randweb (5000, 15);
 	printf("1\n");
-	trust = get_trust2 (web, 0, 2, 8);
-
-
+	trust = get_trust1 (web, 0, 2, 5);
 	printf("__trust = %d\n", trust );
-	trust = get_trust1 (web, 0, 2, 8);
+	trust = get_trust1 (web, 0, 2, 6);
+	printf("__trust = %d\n", trust );
+	trust = get_trust1 (web, 0, 2, 7);
 	printf("__trust = %d\n", trust );
 
 
