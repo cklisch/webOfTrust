@@ -117,33 +117,32 @@ uint8_t get_trust1 (struct Web web, int from_node, int to_node, int max_pathleng
 
 }
 
-uint8_t newGetTrustHelper (struct TrustAcc* acc, uint8_t* actual_trust, int from_node, int to_node, int *path) 
+uint8_t newGetTrustHelper (struct TrustAcc* acc, uint8_t* actual_trust, int from_node, int to_node, struct Path *path) 
 {       
-        printf("fromNode %d pathlength %d\n",from_node, path[0]); 
         if (from_node == to_node) return 100;
         if (actual_trust[from_node] != NO_PATH) return actual_trust[from_node];
-        int pathlength = path[0], is_cyclic = 0, i;
-        path[path[0]++] = from_node;
-        
-        uint8_t trust, neg_trust = MAX_TRUST;
+        int is_cyclic = 0, i;
+        path->pos[path->length] = from_node;
+        int pathlength = path->length;
+        uint8_t trust, distrust = MAX_TRUST;
         struct TrustAcc* cur_acc = (acc + from_node);
         while (cur_acc->nextAcc != NULL) {
-                for (i = 1; i < pathlength; i++){                        
-                        if (path[i] == cur_acc->prevNode) {
+                for (i = 0; i < path->length; i++){                        
+                        if (path->pos[i] == cur_acc->prevNode) {
                                 printf("is_cyclic %d\n", i );
                                 is_cyclic = 1;
                                 cur_acc = cur_acc->nextAcc;
-                                if (cur_acc->nextAcc == NULL) return 0;
+                                i = 0;
                         }
                 }
-                trust = newGetTrustHelper (acc, actual_trust, (*cur_acc).prevNode, to_node, path );
-                path[0] = pathlength;
+                trust = newGetTrustHelper (acc, actual_trust, cur_acc->prevNode, to_node, path );
+                path->length = pathlength;
                 trust = (trust * cur_acc->trust) / MAX_TRUST;
-                neg_trust = (neg_trust * (MAX_TRUST - trust)) / MAX_TRUST;
+                distrust = (distrust * (MAX_TRUST - trust)) / MAX_TRUST;
                 cur_acc = (*cur_acc).nextAcc;
         }        
-        if (is_cyclic == 0) actual_trust[from_node] = (MAX_TRUST - neg_trust);
-        return (MAX_TRUST - neg_trust);
+        if (is_cyclic == 0) actual_trust[from_node] = (MAX_TRUST - distrust);
+        return (MAX_TRUST - distrust);
 }
 
 struct TrustAcc* malloc_TrustAcc (int n, struct Web web)
@@ -157,26 +156,25 @@ struct TrustAcc* malloc_TrustAcc (int n, struct Web web)
         for (i = 0; i < n; i++){
                 acc[i].trust = NO_PATH;
                 (*(acc+i)).nextAcc = NULL;
-                (*(acc+i)).prevNode = web.size + 1;
+                (*(acc+i)).prevNode = web.size;
         }
         return acc;
 }
 
-uint8_t get_trust2 (struct Web web, int fromNode, int toNode, int max_pathlength)
+uint8_t get_trust2 (struct Web web, int from_node, int to_node, int max_pathlength)
 {
-        int *path = (int*) malloc ((max_pathlength + 1) * sizeof (*path));
+        int *path = (int*) calloc (max_pathlength , sizeof (*path));
         if (path == NULL) {
                 printf("newGetTrust: mallco error path\n");
                 return 0;
         }
         struct TrustAcc *acc = malloc_TrustAcc (web.size, web);
 
-        uint8_t *actualTrust = (uint8_t*) calloc (web.size, sizeof (*actualTrust));
-        if (actualTrust == NULL) {
+        uint8_t *actual_trust = (uint8_t*) malloc (web.size * sizeof (*actual_trust));
+        if (actual_trust == NULL) {
                 printf("newGetTrust: calloc error actualTrust\n");
                 return 0;
         }
-        path[0] = fromNode;
         int *link_cnt = (int*) calloc (web.size, sizeof (*link_cnt));
         if (link_cnt == NULL) {
                 printf ("newGetTrust: malloc error link_cnt");
@@ -184,47 +182,50 @@ uint8_t get_trust2 (struct Web web, int fromNode, int toNode, int max_pathlength
         }
         int pathlength = 0;
 
-        int acc_used = 0, next_node;
-        struct Node current_node;
-        struct TrustAcc *new_acc  = malloc_TrustAcc (1, web), *next_node_acc;
-        
+        int acc_used = 0, next, curr;
+        struct TrustAcc *new_acc  = malloc_TrustAcc (1, web), *next_acc;
+        path[0] = from_node;
+        struct Node *node = web.nodes; 
+        struct Path *path_ = (struct Path*) malloc (sizeof (*path_));
+
         while (1) {
-                current_node = web.nodes[path[pathlength]];
-                while (link_cnt[path[pathlength]] >= current_node.links) {
+                curr = path[pathlength];
+                printf("curr %d",curr);
+                while (link_cnt[curr] >= node[curr].links) {
                         if (pathlength == 0) {
                                 goto recursion;
                         }
-                        current_node = web.nodes[path[--pathlength]];
+                        curr = path[--pathlength];
                 }  
-                if (pathlength == max_pathlength || path[pathlength] == toNode) {
-
-                        current_node = web.nodes[path[--pathlength]];
+                if (pathlength == max_pathlength || curr == to_node) {
+                        curr = path[--pathlength];
                 }
                 
-                next_node = current_node.trusty[link_cnt[path[pathlength]]];
-                link_cnt[path[pathlength]]++;
-                next_node_acc = (acc + next_node);
+                next = node[curr].trusty[link_cnt[curr]];
                 acc_used = 0;
                 while (1) {     
-                        if (next_node_acc->nextAcc == NULL){
-                                next_node_acc->trust = current_node.trust[link_cnt[path[pathlength]]-1];
-                                next_node_acc->prevNode = path[pathlength];
+                        if (next_acc->nextAcc == NULL){
+                                next_acc->trust = node[curr].trust[link_cnt[curr]];
+                                next_acc->prevNode = curr;
                                 new_acc = malloc_TrustAcc (1, web);
-                                next_node_acc->nextAcc = new_acc;
+                                next_acc->nextAcc = new_acc;
                                 if (acc_used == 0) {
-                                        path[++pathlength] = next_node;
+                                        path[++pathlength] = next;
                                 }
+                                link_cnt[curr]++;
                                 break;
                         }
                         acc_used = 1;
-                        next_node_acc = next_node_acc->nextAcc;
+                        next_acc = next_acc->nextAcc;
                         
                 }
         }
 recursion:
-        path[0] = 1;
+        path_->pos = path;
+        path_->length = 0;
+        path_->max = max_pathlength;
         printf("recursion\n");
-        return newGetTrustHelper (acc, actualTrust, toNode, fromNode, path);
+        return newGetTrustHelper (acc, actual_trust, to_node, from_node, path_);
 }
 
 void web2file (char* file_name, struct Web web)
@@ -278,3 +279,5 @@ struct Web mk_randweb(int size, int density){
         web2file ("randWeb.txt", web);
         return web;
 }
+
+
