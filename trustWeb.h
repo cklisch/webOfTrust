@@ -30,10 +30,10 @@ struct TrustAcc {
         struct TrustAcc* nextAcc;
 };
 
-struct Web get_web (char* web_name);
+
 uint8_t get_trust1 (struct Web web, int fromNode, int toNode, int max_pathlength);
 uint8_t get_trust2 (struct Web web, int fromNode, int toNode, int max_pathlength);
-struct Web mk_randweb (int size, int density);
+
 
 
 #endif
