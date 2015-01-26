@@ -1,20 +1,37 @@
 #ifndef _TRUSTWEB_
 #define _TRUSTWEB_
 
+#include <stdlib.h>
+#include <inttypes.h>
 #include <stdint.h>
+#include <time.h>
+#include <pthread.h>
+
+#include "web_mgmt.h"
+#include "qsort.h"
 
 #define MAX_TRUST 100
-#define NO_PATH 0
+#define NO_PATH (MAX_TRUST + 1)
+#define MAX_PATH
+
+#define DEBUG 0
+#define NUM_THREADS 2
+#define debug_print(fmt, ...) \
+            do { if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
+
 
 struct Path {
     int length;
     int max;
+    int *node;
     int *pos;
 };
 
 struct Web {
         int size;
         struct Node *nodes;
+        uint8_t **matrix;
+        uint8_t **eval_matrix;
 };
 
 struct Node {
@@ -30,10 +47,10 @@ struct TrustAcc {
         struct TrustAcc* nextAcc;
 };
 
-
-uint8_t get_trust1 (struct Web web, int fromNode, int toNode, int max_pathlength);
-uint8_t get_trust2 (struct Web web, int fromNode, int toNode, int max_pathlength);
-
-
+uint8_t get_trust (struct Web web, int fromNode, int toNode);
+void analyse_web (struct Web web);
+struct Web evaluate_web (struct Web web);
+struct Web evaluate_web2 (struct Web web, int nr_pth);
+struct Web evaluate_web3 (struct Web web, int nr_pth);
 
 #endif

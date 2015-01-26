@@ -1,26 +1,36 @@
 #include <stdio.h>
 #include "trustWeb.h"
 #include "web_mgmt.h"
-#include <stdint.h>
+#include <time.h>
+#include <assert.h>
+
 
 int main(void){
-	char* testWeb;
-	struct Web web;
-	uint8_t trust;
-    testWeb = "testWeb.txt";
-    printf("%s\n", testWeb);
-    // web = mk_randweb (1000, 10);
-     web = get_web (testWeb);
+        clock_t start, stop;
+        double tm = 0.0;
+
+        struct Web web = rand_matrix (200, 20);
+
+        assert ((start = clock()) != -1);
+        struct Web e_web = evaluate_web (web);
+        stop = clock();
+        tm = (double) (stop-start)/CLOCKS_PER_SEC;
+        printf("Run time: %f\n", tm);
+        tm = 0.0;
+
+   
+        assert ((start = clock()) != -1);
+        struct Web e_web2 = evaluate_web2 (web, 8);
+        stop = clock();
+        tm = (double) (stop-start)/CLOCKS_PER_SEC;
+        printf("Run time: %f\n", tm);
+        tm = 0.0;
 
 
-
-	printf("1\n");
-	int i;
-	for (i = 1; i <= 20; i++){
-		trust = get_trust1 (web, 0, 4, i);
-		printf("1> pathlength %d trust = %d\n", i, trust );
-		trust = get_trust2 (web, 0, 4, i);
-		printf("2> pathlength %d trust = %d\n\n", i, trust );
-	}
-	return 0;
+        assert ((start = clock ()) != -1);
+        struct Web e_web3 = evaluate_web3 (web, 8);
+        stop = clock();
+        tm = (double) (stop-start)/CLOCKS_PER_SEC;
+        printf("Run time: %f\n", tm);
+        return 0;
 }

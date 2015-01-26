@@ -1,192 +1,213 @@
-#include <inttypes.h>
-#include <stdio.h>
-#include <stdlib.h>
+
 #include "trustWeb.h"
-#include <time.h>
-#include <stdint.h>
 
 
-
-
-
-
-uint8_t getTrustHelper (struct Node *node, int from_node, int to_node, struct Path *path, uint8_t *actual_trust)
-{   
-        printf("from_node %d\n", from_node );
-        if (path->length == path->max) 
-            return 0;
-        int i;
-        for (i = 0; i < path->length; i++) 
-            if (path->pos[i] == from_node) 
-                return 0;
-
-        if (from_node == to_node) 
-            return MAX_TRUST;
-        printf("%d\n", actual_trust[from_node] );
-        if (actual_trust[from_node] != MAX_TRUST + 1)
-            return actual_trust[from_node];
-
-
-        path->pos[path->length] = from_node;
-        int pathlength = ++path->length;
-        uint8_t trust, distrust_acc = MAX_TRUST;      
-
-        for (i = 0; i < node[from_node].links; i++) {
-
-                trust = getTrustHelper (node, node[from_node].trusty[i], to_node, path, actual_trust);
-
-                path->length = pathlength;
-                
-                trust = ((node[from_node].trust[i] * trust) / MAX_TRUST) ; 
-                if ((distrust_acc * (MAX_TRUST - trust)) % MAX_TRUST > 0) {
-                    distrust_acc = (distrust_acc * (MAX_TRUST - trust)) / MAX_TRUST;
-                    distrust_acc++;
-                }
-                else distrust_acc = (distrust_acc * (MAX_TRUST - trust)) / MAX_TRUST;        
+void analysis_report (int *node_analysis, int * nodes, int size)
+{
+        FILE *report = fopen ("report.txt", "w");
+        if (report == NULL) {
+                printf("analysis_report: open file Error\n");
+                return;
         }
-        actual_trust[from_node] = (MAX_TRUST - distrust_acc);
-        printf("%d actual_trust %d\n", from_node, actual_trust[from_node]);
-        return (MAX_TRUST - distrust_acc);
+        int i;
+        for (i = 0; i < size; i++) {
+                fprintf(report, "%4d %d\n", nodes[i], node_analysis[i]);
+        }
 }
 
-uint8_t get_trust1 (struct Web web, int from_node, int to_node, int max_pathlength)
+void analyse_web (struct Web web)
 {
-        uint8_t trust;
-        int *pos = (int*) calloc (max_pathlength , sizeof (*pos));
-        if (pos == NULL) {
-                printf("getTrust: Error malloc\n");
-                return 0;
+        int *node_analysis = (int*) calloc (web.size, sizeof (*node_analysis));
+        if (node_analysis == NULL) {
+                printf("web_analysis: malloc Error\n");
+                return;
         }
-        uint8_t *actual_trust = (uint8_t*) malloc (web.size * sizeof (*actual_trust));
+        int *id = (int*) malloc (web.size * sizeof (*id));
+        if (id == NULL) {
+                printf("web_analysis: malloc Error\n");
+                return;
+        }
+        int i, j;
+        for (i = 0; i < web.size; i++) {
+                id[i] = i;
+                for (j = 0; j < web.size; j++) {
+                        node_analysis[j] += web.matrix[i][j];
+                }
+        }
+        printf("loop done\n");
+        my_qsort (node_analysis, id, web.size);
+        printf("qsort done\n");
+        analysis_report (node_analysis, id, web.size);
+        return;
+
+
+}
+
+
+
+
+
+
+void recursiv_step (uint8_t trust, uint8_t *eval, uint8_t *path, int from_node, struct Web web)
+{
+        uint8_t new_trust, old_trust;
         int i;
         for (i = 0; i < web.size; i++) {
-            actual_trust[i] = MAX_TRUST + 1;
+                if (web.matrix[from_node][i] != 0 && path[i] == 0) {
+                        debug_print("%d", i);
+                        old_trust = eval[i];
+                        new_trust = (trust * web.matrix[from_node][i]) / MAX_TRUST;
+                        eval[i] = MAX_TRUST - ((MAX_TRUST - new_trust) * (MAX_TRUST - old_trust)) / MAX_TRUST;
+                        path[i] = eval[i] - old_trust;
+                        if (path[i] != 0)
+                                recursiv_step (path[i], eval, path, i, web);
+                        path[i] = 0;
+                }
         }
-        struct Path path;
-        path.pos = pos;
-        path.max = max_pathlength;
-        path.length = 0;
-        trust = getTrustHelper (web.nodes, from_node, to_node, &path, actual_trust);
-        free (pos);
-        return trust;
-
 }
 
-uint8_t newGetTrustHelper (struct TrustAcc* acc, uint8_t* actual_trust, int from_node, int to_node, struct Path *path) 
+
+
+uint8_t* eval_node (int id, struct Web web)
+{
+        uint8_t *eval = (uint8_t*) calloc (web.size, sizeof (*eval));
+        uint8_t *path = (uint8_t*) calloc (web.size, sizeof (*eval));
+
+        path[id] = 100;
+
+        recursiv_step (100, eval, path, id, web);
+
+        free (path);
+        return eval;
+        
+}
+
+
+struct Web evaluate_web (struct Web web)
 {       
-        // printf("from_node %d pathlength %d actual_trust %d\n", from_node, path->length, actual_trust[from_node]);
-        if (from_node == to_node)
-            return 100;
-        if (actual_trust[from_node] != NO_PATH) 
-            return actual_trust[from_node];
-        int is_cyclic = 0, i;
-        path->pos[path->length] = from_node;
-        int pathlength = path->length;
-        uint8_t trust, distrust = MAX_TRUST;
-        struct TrustAcc* cur_acc = (acc + from_node);
-        while (cur_acc->nextAcc != NULL) {
-                for (i = 0; i < path->length; i++){                        
-                        if (path->pos[i] == cur_acc->prevNode) {
-                                is_cyclic = 1;
 
-                                cur_acc = cur_acc->nextAcc;
-                                if (cur_acc->nextAcc == NULL) 
-                                    goto end;
-                                i = 0;
-                        }
-                }
-                path->length++;
-                trust = newGetTrustHelper (acc, actual_trust, cur_acc->prevNode, to_node, path );
-                path->length = pathlength;
-                trust = (trust * cur_acc->trust) / MAX_TRUST;
-                distrust = (distrust * (MAX_TRUST - trust)) / MAX_TRUST;
-                cur_acc = (*cur_acc).nextAcc;
-        }
-end:
-        if (is_cyclic == 0) actual_trust[from_node] = (MAX_TRUST - distrust);
-        // printf("from_node %d actual_trust%d\n", from_node, actual_trust[from_node] );
-        return (MAX_TRUST - distrust);
-}
-
-struct TrustAcc* malloc_TrustAcc (int n, struct Web web)
-{
-        struct TrustAcc *acc = (struct TrustAcc*) malloc (n * sizeof (*acc));
-        if (acc == NULL) {
-                printf("malloc error TrustAcc\n");
-                return NULL;
-        }
         int i;
-        for (i = 0; i < n; i++){
-                acc[i].trust = NO_PATH;
-                (*(acc+i)).nextAcc = NULL;
-                (*(acc+i)).prevNode = web.size;
+        uint8_t **eval_matrix = (uint8_t**) malloc (web.size * sizeof (eval_matrix));
+        for (i = 0; i < web.size; i++){
+                eval_matrix[i] = eval_node (i, web);
         }
-        return acc;
+        struct Web e_web;
+        e_web.size = web.size;
+        e_web.nodes = web.nodes;
+        e_web.matrix = eval_matrix;
+
+        return e_web;
 }
 
-uint8_t get_trust2 (struct Web web, int from_node, int to_node, int max_pathlength)
+
+struct PthEval {
+        int id;
+        struct Web web;
+        uint8_t **eval_matrix;
+};
+
+struct Thread {
+        int start;
+        int stop;
+        struct Web web;
+};
+
+
+void *eval_node2 (void *args)
+{        
+        struct PthEval *str = (struct PthEval *) args;
+        uint8_t *path = (uint8_t*) calloc (str->web.size, sizeof (*path));
+
+        path[str->id] = 100;
+
+        recursiv_step (100, str->eval_matrix[str->id], path, str->id, str->web);
+
+        free (path);
+        pthread_exit((void*) &str->id);
+        
+}
+
+
+struct Web evaluate_web2 (struct Web web, int nr_threads)
+{       
+
+        int i, t;
+        uint8_t **eval_matrix = (uint8_t**) malloc (web.size * sizeof (eval_matrix));
+        pthread_t pth[nr_threads];
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+        void *status;
+        struct PthEval str[web.size];
+       
+        for (i = 0; i < web.size;){                
+                for (t = 0; t < nr_threads && i < web.size; t++, i++) {
+                        eval_matrix[i] = (uint8_t*) calloc (web.size, sizeof (*eval_matrix));
+                        str[i].web = web;
+                        str[i].eval_matrix = eval_matrix;
+                        str[i].id = i;
+                        pthread_create(&pth[t], &attr, eval_node2, (void *) &str[i]);
+                }
+                for (t = 0; t < nr_threads; t++) {
+                        pthread_join (pth[t], &status);
+
+                }
+        }
+        struct Web e_web;
+        e_web.size = web.size;
+        e_web.nodes = web.nodes;
+        e_web.matrix = eval_matrix;
+
+        return e_web;
+}
+
+void *eval_thread (void *args)
 {
-        int *path = (int*) calloc (max_pathlength , sizeof (*path));
-        if (path == NULL) {
-                printf("newGetTrust: mallco error path\n");
-                return 0;
-        }
-        struct TrustAcc *acc = malloc_TrustAcc (web.size, web);
-        uint8_t *actual_trust = (uint8_t*) calloc (web.size , sizeof (*actual_trust));
-        if (actual_trust == NULL) {
-                printf("newGetTrust: calloc error actualTrust\n");
-                return 0;
-        }
-        int *link_cnt = (int*) calloc (web.size, sizeof (*link_cnt));
-        if (link_cnt == NULL) {
-                printf ("newGetTrust: malloc error link_cnt");
-                return 0;
-        }
-        int pathlength = 0;
+        struct Thread *str = (struct Thread *) args;
 
-        int acc_used = 0, next, curr;
-        struct TrustAcc *new_acc  = malloc_TrustAcc (1, web), *next_acc;
-        path[0] = from_node;
-        struct Node *node = web.nodes; 
-        struct Path *pathx = (struct Path*) malloc (sizeof (*pathx));
-        while (1) {
-                curr = path[pathlength];
-                while (link_cnt[curr] >= node[curr].links) {
-                        if (pathlength == 0) {
-                                goto recursion;
-                        }
-                        curr = path[--pathlength];
-                }  
-                if (pathlength == max_pathlength || curr == to_node) {
-                        curr = path[--pathlength];
-                }
-                
-                next = node[curr].trusty[link_cnt[curr]];
-                acc_used = 0;
-                next_acc = acc + next;
-                while (1) {     
-                        if (next_acc->nextAcc == NULL){
-                                next_acc->trust = node[curr].trust[link_cnt[curr]];
-                                next_acc->prevNode = curr;
-                                new_acc = malloc_TrustAcc (1, web);
-                                next_acc->nextAcc = new_acc;
-                                if (acc_used == 0) {
-                                        path[++pathlength] = next;
-                                }
-                                link_cnt[curr]++;
-                                break;
-                        }
-                        acc_used = 1;
-                        next_acc = next_acc->nextAcc;
-                        
-                }
+        int i;
+
+        for (i = str->start; i < str->stop; i++) {
+                str->web.eval_matrix[i] = eval_node (i, str->web);
         }
-recursion:
-        pathx->pos = path;
-        pathx->length = 0;
-        pathx->max = max_pathlength;
-        return newGetTrustHelper (acc, actual_trust, to_node, from_node, pathx);
+
+        pthread_exit((void*) &str->start);
+
+
 }
 
+struct Web evaluate_web3 (struct Web web, int nr_pth)
+{
+        int i, t;
+        uint8_t **eval_matrix = (uint8_t**) malloc (web.size * sizeof (eval_matrix));
+        pthread_t pth[nr_pth];
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+        void *status;
+        struct Thread str[nr_pth];
+        web.eval_matrix = eval_matrix;
+        printf("done\n");
 
 
+
+        for (i = 0; i < nr_pth; i++) {
+                str[i].web = web;
+                str[i].start = i * (web.size / nr_pth);
+                printf("start %d : %d\n",i, str[i].start);
+                str[i].stop = (i + 1) * (web.size / nr_pth);
+                printf("stop %d : %d\n",i, str[i].stop);
+
+                pthread_create (&pth[i], &attr, eval_thread, (void *) &str[i]);
+        }
+        for (i = 0; i < nr_pth; i++) {
+                pthread_join (pth[i], &status);
+        }
+
+        struct Web e_web;
+        e_web.size = web.size;
+        e_web.nodes = web.nodes;
+        e_web.matrix = eval_matrix;
+
+        return e_web;
+}
