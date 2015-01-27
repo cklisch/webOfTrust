@@ -73,24 +73,21 @@ void web2file (char* file_name, struct Web web)
        return;
 }
 
-struct Web init_matrix (struct Web web)
+void web2mat (struct Web *web)
 {       
         int i, j, k;
-        uint8_t **web_matrix = (uint8_t**) malloc (web.size * sizeof (web_matrix));
+        uint8_t **web_matrix = (uint8_t**) malloc (web->size * sizeof (web_matrix));
         
-        for (i = 0; i < web.size; i++){
-                web_matrix[i] = (uint8_t*) malloc (web.size * sizeof (*web_matrix));
-                for (j = 0, k = 0; j < web.size; j++){
-                        //printf("%d\n", web_matrix[i][j][0]);
-                        if (j == web.nodes[i].trusty[k]){
-                            //printf("at %d, %d -> %d\n",k , web.nodes[i].trusty[k], web.nodes[i].trust[k]);
-                            web_matrix[i][j] = web.nodes[i].trust[k];
-
+        for (i = 0; i < web->size; i++){
+                web_matrix[i] = (uint8_t*) calloc (web->size, sizeof (*web_matrix));
+                for (j = 0, k = 0; j < web->size; j++){
+                        if (j == web->nodes[i].trusty[k]){
+                            web_matrix[i][j] = web->nodes[i].trust[k++];
                         }
                 }
         }
-        web.matrix = web_matrix;
-        return web;
+        web->matrix = web_matrix;
+        return;
 }
 
 
@@ -120,12 +117,12 @@ struct Web rand_matrix (int size, int density)
 }
 
 
-void print_matrix (struct Web web)
+void print_matrix (uint8_t **matrix, int size)
 {
         int i, j;
-        for (i = 0; i < web.size; i++) {
-                for (j = 0; j < web.1size; j++) {
-                        printf("%3d ",web.matrix[i][j]);
+        for (i = 0; i < size; i++) {
+                for (j = 0; j < size; j++) {
+                        printf("%3d ",matrix[i][j]);
                 }
                 printf("\n");
         }
@@ -159,33 +156,3 @@ void mat2web (struct Web *web)
         return;
 }
 
-
-struct Web mk_randweb(int size, int density){
-        int i, j, k, links, trusty, seed = 1;
-        struct Node *node = (struct Node*) malloc (size * sizeof (struct Node));
-        for (i = 0; i < size; i++){
-                srand (time(NULL) * seed++);
-                links = (rand() % size) % density;
-                malloc_node (&node[i], links);
-                node[i].links = links;
-                for (j = 0; j < links; j++){
-                        srand(time(NULL) + seed++);
-                        trusty = rand() % size;              
-                        for (k = 0; k < j; k++) {
-                                if (node[i].trusty[k] == trusty) {
-                                        srand(time(NULL) + (i+1) * seed++);
-                                        k = 0;
-                                        trusty = rand() % size;
-                                }
-                        }
-                        node[i].trusty[j] = trusty;
-                        node[i].trust[j] = (rand() % MAX_TRUST) ;
-                }
-        }
-
-        struct Web web;
-        web.size = size;
-        web.nodes = node;
-        web2file ("randWeb.txt", web);
-        return web;
-}

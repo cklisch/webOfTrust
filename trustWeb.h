@@ -16,8 +16,9 @@
 
 #define DEBUG 0
 #define NUM_THREADS 2
+
 #define debug_print(fmt, ...) \
-            do { if (DEBUG) fprintf(stderr, fmt, __VA_ARGS__); } while (0)
+            do { if (DEBUG) printf(fmt, __VA_ARGS__); } while (0)
 
 
 struct Path {
@@ -47,10 +48,23 @@ struct TrustAcc {
         struct TrustAcc* nextAcc;
 };
 
+
+struct PthEval {
+        int id;
+        struct Web web;
+        uint8_t **eval_matrix;
+};
+
+struct Thread {
+        int start;
+        int stop;
+        struct Web web;
+};
+
 uint8_t get_trust (struct Web web, int fromNode, int toNode);
 void analyse_web (struct Web web);
 struct Web evaluate_web (struct Web web);
 struct Web evaluate_web2 (struct Web web, int nr_pth);
-struct Web evaluate_web3 (struct Web web, int nr_pth);
+void evaluate_web3 (struct Web *web, int nr_pth);
 
 #endif

@@ -44,10 +44,6 @@ void analyse_web (struct Web web)
 }
 
 
-
-
-
-
 void recursiv_step (uint8_t trust, uint8_t *eval, uint8_t *path, int from_node, struct Web web)
 {
         uint8_t new_trust, old_trust;
@@ -99,18 +95,6 @@ struct Web evaluate_web (struct Web web)
         return e_web;
 }
 
-
-struct PthEval {
-        int id;
-        struct Web web;
-        uint8_t **eval_matrix;
-};
-
-struct Thread {
-        int start;
-        int stop;
-        struct Web web;
-};
 
 
 void *eval_node2 (void *args)
@@ -176,38 +160,32 @@ void *eval_thread (void *args)
 
 }
 
-struct Web evaluate_web3 (struct Web web, int nr_pth)
+void evaluate_web3 (struct Web *web, int nr_pth)
 {
         int i, t;
-        uint8_t **eval_matrix = (uint8_t**) malloc (web.size * sizeof (eval_matrix));
+        uint8_t **eval_matrix = (uint8_t**) malloc (web->size * sizeof (eval_matrix));
         pthread_t pth[nr_pth];
         pthread_attr_t attr;
         pthread_attr_init(&attr);
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
         void *status;
         struct Thread str[nr_pth];
-        web.eval_matrix = eval_matrix;
-        printf("done\n");
-
-
+        web->eval_matrix = eval_matrix;
 
         for (i = 0; i < nr_pth; i++) {
-                str[i].web = web;
-                str[i].start = i * (web.size / nr_pth);
+                str[i].web = *web;
+                str[i].start = i * (web->size / nr_pth);
                 printf("start %d : %d\n",i, str[i].start);
-                str[i].stop = (i + 1) * (web.size / nr_pth);
+                str[i].stop = (i + 1) * (web->size / nr_pth);
                 printf("stop %d : %d\n",i, str[i].stop);
-
+                if (i == nr_pth - 1 && str[i].stop != web->size) {
+                        str[i].stop = web->size;
+                }
                 pthread_create (&pth[i], &attr, eval_thread, (void *) &str[i]);
         }
         for (i = 0; i < nr_pth; i++) {
                 pthread_join (pth[i], &status);
         }
 
-        struct Web e_web;
-        e_web.size = web.size;
-        e_web.nodes = web.nodes;
-        e_web.matrix = eval_matrix;
-
-        return e_web;
+        return;
 }
